@@ -1,12 +1,12 @@
 #!/bin/bash
 
 
-API_URL="http://127.0.0.1:5000/score"
+API_URL="http://localhost:5000/score"
 COUNT=100
 
 for ((i=1; i<=COUNT; i++)); do
   player_id=$((RANDOM % 1000))
-  score=$((RANDOM % 2001))
+  score=$((RANDOM % 20001))
   
   echo "[$i] Submitting: $player_id -> $score"
   

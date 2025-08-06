@@ -2,6 +2,20 @@
 <html lang="en">
     <body>
     <h1>Top 100 Players</h1>
+    <button id="clearBtn">Clear All Scores</button>
+
+    <script>
+    document.getElementById('clearBtn').addEventListener('click', () => {
+    fetch('/delete-all', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+        alert(data.message || data.error);
+        location.reload();
+        })
+        .catch(err => alert('Error: ' + err));
+    });
+    </script>
+
     <table>
         <thead>
             <tr>
