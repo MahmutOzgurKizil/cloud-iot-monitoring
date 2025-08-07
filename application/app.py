@@ -1,5 +1,7 @@
 import db
+from redis_client import rc
 from flask import Flask, request, jsonify, render_template
+import json
 
 app = Flask(__name__)
 
@@ -11,23 +13,15 @@ def handle_submit_score():
 
         if player_id is None or score_raw is None:
             raise ValueError('Missing player_id or score')
-
         try:
             score = int(score_raw)
         except ValueError:
             raise ValueError('Score must be an integer')
-
         if score < 0:
             raise ValueError('Score must be non-negative')
-
-        existing = db.get_player_score(player_id)
-
-        if existing:
-            if score > existing[0]:
-                db.update_player_score(player_id, score)
-        else:
-            db.insert_player_score(player_id, score)
-
+        
+        db.upsert_player_score(player_id, score)
+        rc.delete("leaderboard")
 
         return jsonify({'message': 'Score submitted successfully'}), 200
 
@@ -40,8 +34,13 @@ def handle_submit_score():
 @app.route('/', methods=['GET'])
 def handle_get_leaderboard():
     try:
-        top_scores = db.get_top_scores()
-        return render_template('leaderboard.html', scores=top_scores), 200
+        cache = rc.get("leaderboard")
+        if cache:
+            top_scores = json.loads(cache)
+        else:
+            top_scores = db.get_top_scores()
+            rc.set("leaderboard", json.dumps(top_scores), ex=30)
+            return render_template('leaderboard.html', scores=top_scores), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
@@ -49,6 +48,7 @@ def handle_get_leaderboard():
 def handle_delete_all():
     try:
         db.delete_all_scores()
+        rc.delete("leaderboard")
         return jsonify({'message': 'All scores deleted successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

@@ -38,22 +38,20 @@ def get_player_score(player_id):
     conn.close()
     return score['score'] if score else None
 
-def update_player_score(player_id, score):
+def upsert_player_score(player_id, score):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("INSERT INTO scores (player_id, score) VALUES (%s, %s) ON CONFLICT (player_id) DO UPDATE SET score = EXCLUDED.score", (player_id, score))
+    cur.execute("""
+        INSERT INTO scores (player_id, score)
+        VALUES (%s, %s)
+        ON CONFLICT (player_id) DO UPDATE
+        SET score = GREATEST(scores.score, EXCLUDED.score)
+    """, (player_id, score))
     conn.commit()
     cur.close()
     conn.close()
 
-def insert_player_score(player_id, score):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("INSERT INTO scores (player_id, score) VALUES (%s, %s)", (player_id, score))
-    conn.commit()
-    cur.close()
-    conn.close()
-
+    
 def get_top_scores(limit=100):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
