@@ -40,7 +40,7 @@ def handle_get_leaderboard():
         else:
             top_scores = db.get_top_scores()
             rc.set("leaderboard", json.dumps(top_scores), ex=30)
-            return render_template('leaderboard.html', scores=top_scores), 200
+        return render_template('leaderboard.html', scores=top_scores), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     

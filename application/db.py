@@ -50,7 +50,6 @@ def upsert_player_score(player_id, score):
     conn.commit()
     cur.close()
     conn.close()
-
     
 def get_top_scores(limit=100):
     conn = get_db_connection()

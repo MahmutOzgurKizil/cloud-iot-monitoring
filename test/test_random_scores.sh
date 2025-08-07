@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-API_URL="http://localhost:5000/score"
+API_URL="http://0.0.0.0:5000/score"
 COUNT=100
 
 for ((i=1; i<=COUNT; i++)); do
