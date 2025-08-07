@@ -6,17 +6,17 @@
 
     <script>
     document.getElementById('clearBtn').addEventListener('click', () => {
-    fetch('/delete-all', { method: 'POST' })
-        .then(res => res.json())
-        .then(data => {
-        alert(data.message || data.error);
-        location.reload();
-        })
-        .catch(err => alert('Error: ' + err));
+        fetch('/delete-all', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message || data.error);
+                location.reload();
+            })
+            .catch(err => alert('Error: ' + err));
     });
     </script>
 
-    <table>
+    <table id="leaderboard-table">
         <thead>
             <tr>
                 <th>Rank</th>
@@ -34,5 +34,21 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <script>
+    function fetchLeaderboard() {
+        fetch('/')
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newTable = doc.querySelector('#leaderboard-table');
+                if (newTable) {
+                    document.querySelector('#leaderboard-table').innerHTML = newTable.innerHTML;
+                }
+            });
+    }
+    setInterval(fetchLeaderboard, 500); // Every .5 seconds
+    </script>
 </body>
 </html>

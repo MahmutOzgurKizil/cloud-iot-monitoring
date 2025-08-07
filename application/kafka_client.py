@@ -29,7 +29,6 @@ def get_score_consumer():
 def send_score_update(player_id, score):
     producer = get_score_producer()
     producer.send('score_updates', {'player_id': player_id, 'score': score})
-    producer.flush()
 
 def consume_score_updates():
     consumer = get_score_consumer()

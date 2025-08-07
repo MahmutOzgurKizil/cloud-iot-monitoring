@@ -12,6 +12,7 @@ def handle_submit_score():
         player_id = request.form.get('player_id')
         score_raw = request.form.get('score')
 
+        # Validate input
         if player_id is None or score_raw is None:
             raise ValueError('Missing player_id or score')
         try:
@@ -21,6 +22,7 @@ def handle_submit_score():
         if score < 0:
             raise ValueError('Score must be non-negative')
         
+        # Upsert score with Kafka
         kc.send_score_update(player_id, score)
         return jsonify({'message': 'Score submitted successfully'}), 200
 
@@ -35,9 +37,9 @@ def handle_get_leaderboard():
     try:
         cache = rc.get("leaderboard")
         if cache:
-            top_scores = json.loads(cache)
+            top_scores = json.loads(cache) # Cache hit
         else:
-            top_scores = db.get_top_scores()
+            top_scores = db.get_top_scores() # Cache miss
             rc.set("leaderboard", json.dumps(top_scores), ex=30)
         return render_template('leaderboard.html', scores=top_scores), 200
     except Exception as e:
