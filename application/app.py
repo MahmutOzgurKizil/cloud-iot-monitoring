@@ -1,5 +1,6 @@
 import db
 from redis_client import rc
+import kafka_client as kc
 from flask import Flask, request, jsonify, render_template
 import json
 
@@ -20,9 +21,7 @@ def handle_submit_score():
         if score < 0:
             raise ValueError('Score must be non-negative')
         
-        db.upsert_player_score(player_id, score)
-        rc.delete("leaderboard")
-
+        kc.send_score_update(player_id, score)
         return jsonify({'message': 'Score submitted successfully'}), 200
 
     except ValueError as ve:

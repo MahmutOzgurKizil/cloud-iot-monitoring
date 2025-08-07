@@ -1,8 +1,8 @@
 #!/bin/bash
 
 
-API_URL="http://0.0.0.0:5000/score"
-COUNT=100
+API_URL="http://127.0.0.1:5000/score"
+COUNT=10000
 
 for ((i=1; i<=COUNT; i++)); do
   player_id=$((RANDOM % 1000))
