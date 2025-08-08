@@ -32,16 +32,16 @@ def handle_submit_score():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/', methods=['GET'])
+@app.route('/leaderboard', methods=['GET'])
 def handle_get_leaderboard():
     try:
         cache = rc.get("leaderboard")
         if cache:
-            top_scores = json.loads(cache) # Cache hit
+            top_scores = json.loads(cache)  # Cache hit
         else:
-            top_scores = db.get_top_scores() # Cache miss
+            top_scores = db.get_top_scores()  # Cache miss
             rc.set("leaderboard", json.dumps(top_scores), ex=30)
-        return render_template('leaderboard.html', scores=top_scores), 200
+        return jsonify({'scores': top_scores}), 200  # Return JSON response
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
@@ -53,6 +53,10 @@ def handle_delete_all():
         return jsonify({'message': 'All scores deleted successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/', methods=['GET'])
+def render_leaderboard_page():
+    return render_template('leaderboard.html')  # Render the HTML template
 
 if __name__ == "__main__":
     db.init_db()  

@@ -54,7 +54,7 @@ def upsert_player_score(player_id, score):
 def get_top_scores(limit=100):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT player_id, score FROM scores ORDER BY score DESC LIMIT 100")
+    cur.execute("SELECT player_id, score FROM scores ORDER BY score DESC LIMIT 20")
     top_scores = cur.fetchall()
     cur.close()
     conn.close()

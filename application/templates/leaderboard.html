@@ -1,20 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
-    <body>
-    <h1>Top 100 Players</h1>
+<body>
+    <h1>Top 20 Players</h1>
     <button id="clearBtn">Clear All Scores</button>
-
-    <script>
-    document.getElementById('clearBtn').addEventListener('click', () => {
-        fetch('/delete-all', { method: 'POST' })
-            .then(res => res.json())
-            .then(data => {
-                alert(data.message || data.error);
-                location.reload();
-            })
-            .catch(err => alert('Error: ' + err));
-    });
-    </script>
 
     <table id="leaderboard-table">
         <thead>
@@ -25,30 +13,32 @@
             </tr>
         </thead>
         <tbody>
-            {% for score in scores %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ score.player_id }}</td>
-                <td>{{ score.score }}</td>
-            </tr>
-            {% endfor %}
         </tbody>
     </table>
 
     <script>
-    function fetchLeaderboard() {
-        fetch('/')
-            .then(response => response.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const newTable = doc.querySelector('#leaderboard-table');
-                if (newTable) {
-                    document.querySelector('#leaderboard-table').innerHTML = newTable.innerHTML;
-                }
-            });
+    async function fetchLeaderboard() {
+        const response = await fetch('/leaderboard');
+        const data = await response.json();
+        const tbody = document.querySelector('#leaderboard-table tbody');
+        tbody.innerHTML = data.scores.map((score, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${score.player_id}</td>
+                <td>${score.score}</td>
+            </tr>
+        `).join('');
     }
-    setInterval(fetchLeaderboard, 1000); // Every .5 seconds
+
+    document.getElementById('clearBtn').addEventListener('click', async () => {
+        const response = await fetch('/delete-all', { method: 'POST' });
+        const data = await response.json();
+        alert(data.message || data.error);
+        fetchLeaderboard();
+    });
+
+    fetchLeaderboard();
+    setInterval(fetchLeaderboard, 1000);
     </script>
 </body>
 </html>
