@@ -1,4 +1,5 @@
 import os
+import time
 import db
 from redis_client import rc
 from kafka import KafkaProducer, KafkaConsumer
@@ -36,3 +37,16 @@ def consume_score_updates():
         data = message.value
         db.upsert_player_score(data['player_id'], data['score'])
         rc.delete("leaderboard")
+
+def run_worker():
+    """Main worker function with retry logic"""
+    while True:
+        try:
+            consume_score_updates()
+            break
+        except Exception as e:
+            print(f"Kafka not ready, retrying in 5s... Error: {e}")
+            time.sleep(5)
+
+if __name__ == "__main__":
+    run_worker()

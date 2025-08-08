@@ -1,2 +1,10 @@
-.vscode
-__pycache__
+.vscode/
+
+__pycache__/
+*.pyc
+*.pyo
+
+.env
+.env.production
+
+.dockerignore
