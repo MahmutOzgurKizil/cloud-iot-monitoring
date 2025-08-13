@@ -133,6 +133,10 @@ def handle_get_all_devices():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
+
+# Bulk submission endpoint for device data
+# that accepts a JSON array of readings
+    
 @app.route('/api/device/data/bulk', methods=['POST'])
 def handle_bulk_device_data():
     try:
@@ -176,6 +180,8 @@ def handle_bulk_device_data():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
+
+# Since this is a demo and not a production app, we will provide a simple endpoint to delete all data to reset the state
 @app.route('/api/delete-all', methods=['POST'])
 def handle_delete_all():
     try:
@@ -185,10 +191,12 @@ def handle_delete_all():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Render the main dashboard page
 @app.route('/', methods=['GET'])
 def render_dashboard_page():
     return render_template('dashboard.html')
 
+# Simple health check endpoint
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'healthy'}), 200

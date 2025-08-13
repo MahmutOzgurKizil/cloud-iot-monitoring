@@ -1,97 +1,60 @@
 #!/bin/bash
 
-# Test script for IoT Device Monitoring System
-# Simulates various devices sending sensor data
-
+# Post N random readings (default 100) to the API
 BASE_URL="http://localhost"
-DEVICES=("device_01" "device_02" "device_03" "sensor_hub_alpha" "temp_monitor_beta")
+COUNT=${1:-100}
+COUNT_BULK=${2:-100}
+ITEMS_PER_BULK=${3:-5}
+
+DEVICES=("device_01" "device_02" "device_03" "sensors" "temp_monitor")
 METRICS=("temperature" "humidity" "pressure" "voltage" "current" "power")
 
-echo "IoT Device Monitoring System - Test Script"
-echo "============================================="
-
-# Function to generate random values based on metric type
-generate_value() {
-    local metric=$1
-    case $metric in
-        "temperature")
-            echo "$((RANDOM % 50 - 10))" # -10 to 40°C
-            ;;
-        "humidity")
-            echo "$((RANDOM % 100))" # 0 to 100%
-            ;;
-        "pressure")
-            echo "$((RANDOM % 200 + 950))" # 950 to 1150 hPa
-            ;;
-        "voltage")
-            echo "$(echo "scale=2; $RANDOM/32767*24" | bc -l)" # 0 to 24V
-            ;;
-        "current")
-            echo "$(echo "scale=3; $RANDOM/32767*5" | bc -l)" # 0 to 5A
-            ;;
-        "power")
-            echo "$((RANDOM % 1000))" # 0 to 1000W
-            ;;
+gen_value() {
+    case $1 in
+        temperature) echo $((RANDOM%51-10)) ;;
+        humidity)    echo $((RANDOM%101)) ;;
+        pressure)    echo $((RANDOM%201+950)) ;;
+        voltage)     awk -v r="$RANDOM" 'BEGIN{printf "%.2f", r/32767*24}' ;;
+        current)     awk -v r="$RANDOM" 'BEGIN{printf "%.3f", r/32767*5}' ;;
+        power)       echo $((RANDOM%1001)) ;;
     esac
 }
 
-# Test health endpoint
-echo "Testing health endpoint..."
-curl -s "$BASE_URL/health"
-echo
-
-# Submit individual readings
-echo "Submitting individual device readings..."
-for i in {1..10}; do
+echo "Sending $COUNT random readings..."
+success=0
+for ((i=1;i<=COUNT;i++)); do
     device=${DEVICES[$((RANDOM % ${#DEVICES[@]}))]}
     metric=${METRICS[$((RANDOM % ${#METRICS[@]}))]}
-    value=$(generate_value $metric)
-    
-    response=$(curl -s -X POST "$BASE_URL/api/device/data" \
-        -H "Content-Type: application/json" \
-        -d "{\"device_id\":\"$device\",\"metric_type\":\"$metric\",\"value\":$value}")
-    
-    if echo "$response" | grep -q "successfully"; then
-        echo "$device - $metric: $value"
+    value=$(gen_value "$metric")
+    payload=$(printf '{"device_id":"%s","metric_type":"%s","value":%s}' "$device" "$metric" "$value")
+    resp=$(curl -s -X POST "$BASE_URL/api/device/data" -H 'Content-Type: application/json' -d "$payload")
+    if echo "$resp" | grep -q "successfully"; then
+        ((success++))
     else
-        echo "Failed to submit data for $device: $response"
+        echo "[$i] failed: $resp"
     fi
-    
-    sleep 0.5
 done
 
-echo
+echo "Done. Success: $success/$COUNT"
 
-# Submit bulk readings
-echo "Testing bulk data submission..."
-bulk_json='{"readings":['
-for i in {1..5}; do
-    device=${DEVICES[$((RANDOM % ${#DEVICES[@]}))]}
-    metric=${METRICS[$((RANDOM % ${#METRICS[@]}))]}
-    value=$(generate_value $metric)
-    
-    if [ $i -gt 1 ]; then
-        bulk_json+=','
+# Bulk submissions
+echo "Sending $COUNT_BULK bulk submissions (each with $ITEMS_PER_BULK items)..."
+bulk_success=0
+for ((b=1;b<=COUNT_BULK;b++)); do
+    items=""
+    for ((k=1;k<=ITEMS_PER_BULK;k++)); do
+        device=${DEVICES[$((RANDOM % ${#DEVICES[@]}))]}
+        metric=${METRICS[$((RANDOM % ${#METRICS[@]}))]}
+        value=$(gen_value "$metric")
+        item=$(printf '{"device_id":"%s","metric_type":"%s","value":%s}' "$device" "$metric" "$value")
+        items+="${items:+,}$item"
+    done
+    bulk_json='{"readings":['"$items"']}'
+    resp=$(curl -s -X POST "$BASE_URL/api/device/data/bulk" -H 'Content-Type: application/json' -d "$bulk_json")
+    if echo "$resp" | grep -q "successfully"; then
+        ((bulk_success++))
+    else
+        echo "[bulk $b] failed: $resp"
     fi
-    
-    bulk_json+="{\"device_id\":\"$device\",\"metric_type\":\"$metric\",\"value\":$value}"
 done
-bulk_json+=']}'
-
-response=$(curl -s -X POST "$BASE_URL/api/device/data/bulk" \
-    -H "Content-Type: application/json" \
-    -d "$bulk_json")
-
-if echo "$response" | grep -q "successfully"; then
-    echo "Bulk submission successful"
-else
-    echo "Bulk submission failed: $response"
-fi
-
-echo
-
-
-echo Simple manual test examples
-echo "curl -X POST $BASE_URL/api/device/data -H 'Content-Type: application/json' -d '{\"device_id\":\"device_01\",\"metric_type\":\"temperature\",\"value\":25.5}'"
-echo "curl $BASE_URL/api/devices"
-echo "curl $BASE_URL/api/device/device_01/latest"
+echo "Bulk done. Success: $bulk_success/$COUNT_BULK"
