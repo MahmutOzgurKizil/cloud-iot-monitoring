@@ -2,7 +2,7 @@ services:
   flask-app:
     build:
       context: .
-    container_name: flask_app
+    container_name: iot_api
     depends_on:
       - postgres
       - redis
@@ -59,10 +59,10 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     # no public port; internal only
 
-  worker:
+  device-data-worker:
     build:
       context: .
-    container_name: worker
+    container_name: device_data_worker
     restart: on-failure
     depends_on:
       - kafka
