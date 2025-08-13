@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IoT Device Monitoring Dashboard</title>
+</head>
+<body>
+  <h1>IoT Device Monitoring Dashboard</h1>
+  <p>Real-time monitoring of device sensors and metrics</p>
+
+  <div>
+    <button id="refreshBtn" type="button">Refresh Devices</button>
+    <button id="clearBtn" type="button">Clear All Data</button>
+  </div>
+
+  <div id="message"></div>
+  <div id="devices">Loading devices...</div>
+
+  <script>
+    (() => {
+      const devicesEl = document.getElementById('devices');
+      const messageEl = document.getElementById('message');
+
+      const units = {
+        temperature: '°C',
+        humidity: '%',
+        pressure: ' hPa',
+        voltage: 'V',
+        current: 'A',
+        power: 'W'
+      };
+
+      const unit = t => units[t] || '';
+      const cap = s => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+      const showMessage = (text) => {
+        messageEl.textContent = text || '';
+        if (text) setTimeout(() => (messageEl.textContent = ''), 3000);
+      };
+
+      const renderDevices = (devices = []) => {
+        if (!devices.length) {
+          devicesEl.innerHTML = '<div>No devices found. Submit some data to see devices here.</div>';
+          return;
+        }
+
+        devicesEl.innerHTML = devices.map(d => {
+          const last = d.last_updated ? new Date(d.last_updated).getTime() : 0;
+          const online = Date.now() - last < 5 * 60 * 1000;
+
+          const metrics = Object.entries(d.metrics || {}).map(([k, v]) => {
+            const ts = v?.timestamp ? new Date(v.timestamp).toLocaleString() : '';
+            const val = v?.value ?? '';
+            return `<li><strong>${cap(k)}:</strong> ${val}${unit(k)} <small>${ts}</small></li>`;
+          }).join('');
+
+          return `
+            <section style="margin: 12px 0; padding: 8px 0; border-top: 1px solid #ddd;">
+              <header style="display:flex; gap:8px; align-items:center;">
+                <strong>${d.device_id}</strong>
+                <span>${online ? 'Online' : 'Offline'}</span>
+              </header>
+              <ul style="margin:6px 0 0 16px;">${metrics}</ul>
+            </section>
+          `;
+        }).join('');
+      };
+
+      async function fetchJSON(url, init) {
+        const res = await fetch(url, init);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        return data;
+      }
+
+      async function refresh() {
+        devicesEl.textContent = 'Loading devices...';
+        try {
+          const { devices = [] } = await fetchJSON('/api/devices');
+          renderDevices(devices);
+        } catch (e) {
+          devicesEl.innerHTML = `<div class="error">Error loading devices: ${e.message}</div>`;
+        }
+      }
+
+      async function clearAll() {
+        if (!confirm('Are you sure you want to delete all device data? This action cannot be undone.')) return;
+        try {
+          const { message } = await fetchJSON('/api/delete-all', { method: 'POST' });
+          showMessage(message || 'All data cleared');
+          renderDevices([]);
+        } catch (e) {
+          showMessage(`Error clearing data: ${e.message}`);
+        }
+      }
+
+      document.getElementById('refreshBtn').addEventListener('click', refresh);
+      document.getElementById('clearBtn').addEventListener('click', clearAll);
+
+      setInterval(refresh, 30000);
+      refresh();
+    })();
+  </script>
+</body>
+</html>
