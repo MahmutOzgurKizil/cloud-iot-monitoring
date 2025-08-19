@@ -100,16 +100,19 @@ def handle_get_device_history(device_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+def get_all_devices_data():
+    cache = rc.get("all_devices")
+    if cache:
+        devices_data = json.loads(cache)
+    else:
+        devices_data = db.get_all_devices_latest()
+        rc.set("all_devices", json.dumps(devices_data, default=str), ex=120)
+    return devices_data
+
 @app.route('/api/devices', methods=['GET'])
 def handle_get_all_devices():
     try:
-        cache = rc.get("all_devices")
-        if cache:
-            devices_data = json.loads(cache)
-        else:
-            devices_data = db.get_all_devices_latest()
-            rc.set("all_devices", json.dumps(devices_data, default=str), ex=120)  # 2 minutes cache
-        
+        devices_data = get_all_devices_data()
         return jsonify({'devices': devices_data}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -117,7 +120,6 @@ def handle_get_all_devices():
 
 # Bulk submission endpoint for device data
 # that accepts a JSON array of readings
-    
 @app.route('/api/device/data/bulk', methods=['POST'])
 def handle_bulk_device_data():
     try:
@@ -157,7 +159,6 @@ def handle_bulk_device_data():
             'processed_count': len(processed_readings),
             'readings': processed_readings
         }), 200
-
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
@@ -175,7 +176,8 @@ def handle_delete_all():
 # Render the main dashboard page
 @app.route('/', methods=['GET'])
 def render_dashboard_page():
-    return render_template('dashboard.html')
+    devices = get_all_devices_data()
+    return render_template('dashboard.html', devices=devices)
 
 # Simple health check endpoint
 @app.route('/health', methods=['GET'])

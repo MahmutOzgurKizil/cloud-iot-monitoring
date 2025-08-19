@@ -1,106 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IoT Device Monitoring Dashboard</title>
-</head>
-<body>
-  <h1>IoT Device Monitoring Dashboard</h1>
-  <p>Real-time monitoring of device sensors and metrics</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>IoT Device Monitoring Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-header">
+        <h1>IoT Device Monitoring Dashboard</h1>
+        <p>Real-time monitoring of device sensors and metrics</p>
+        <div class="actions">
+          <button id="refreshBtn" type="button">Refresh Devices</button>
+          <button id="clearBtn" type="button" class="danger">Clear All Data</button>
+        </div>
+      </header>
+      <section id="deviceList" class="card">
+        <h2>Devices</h2>
 
-  <div>
-    <button id="refreshBtn" type="button">Refresh Devices</button>
-    <button id="clearBtn" type="button">Clear All Data</button>
-  </div>
+        <div class="toolbar">
+          <input id="deviceSearch" type="search" placeholder="Search devices..." autocomplete="off" />
+          <span id="searchCount" class="search-count"></span>
+        </div>
 
-  <div id="message"></div>
-  <div id="devices">Loading devices...</div>
+        <ul class="device-list">
+          {% for device in devices %}
+            <li class="device-item" data-device-id="{{ device.device_id|lower }}">
+              <div class="device-header">
+                <span class="device-id">{{ device.device_id }}</span>
+                <span class="updated">
+                  {{ device.last_updated if device.last_updated is defined else 'N/A' }}
+                </span>
+              </div>
+              <ul class="metrics">
+                <li><label>Current</label><span>{{ device.metrics.current.value if device.metrics.current is defined and device.metrics.current.value is defined else 'N/A' }} A</span></li>
+                <li><label>Humidity</label><span>{{ device.metrics.humidity.value if device.metrics.humidity is defined and device.metrics.humidity.value is defined else 'N/A' }} g/kg</span></li>
+                <li><label>Power</label><span>{{ device.metrics.power.value if device.metrics.power is defined and device.metrics.power.value is defined else 'N/A' }} W</span></li>
+                <li><label>Pressure</label><span>{{ device.metrics.pressure.value if device.metrics.pressure is defined and device.metrics.pressure.value is defined else 'N/A' }} Pa</span></li>
+                <li><label>Temperature</label><span>{{ device.metrics.temperature.value if device.metrics.temperature is defined and device.metrics.temperature.value is defined else 'N/A' }} °C</span></li>
+                <li><label>Voltage</label><span>{{ device.metrics.voltage.value if device.metrics.voltage is defined and device.metrics.voltage.value is defined else 'N/A' }} V</span></li>
+              </ul>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    </div>
 
-  <script>
-    (() => {
-      const devicesEl = document.getElementById('devices');
-      const messageEl = document.getElementById('message');
+    <script>
+      // Elements
+      const searchInput = document.getElementById('deviceSearch');
+      const countEl = document.getElementById('searchCount');
+      const deviceItems = Array.from(document.querySelectorAll('.device-item'));
 
-      const units = {
-        temperature: '°C',
-        humidity: '%',
-        pressure: ' hPa',
-        voltage: 'V',
-        current: 'A',
-        power: 'W'
-      };
+      // Restore search
+      const savedSearch = localStorage.getItem('deviceSearch') || '';
+      if (savedSearch) searchInput.value = savedSearch;
 
-      const unit = t => units[t] || '';
-      const cap = s => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-
-      const showMessage = (text) => {
-        messageEl.textContent = text || '';
-        if (text) setTimeout(() => (messageEl.textContent = ''), 3000);
-      };
-
-      const renderDevices = (devices = []) => {
-        if (!devices.length) {
-          devicesEl.innerHTML = '<div>No devices found. Submit some data to see devices here.</div>';
-          return;
-        }
-
-        devicesEl.innerHTML = devices.map(d => {
-          const last = d.last_updated ? new Date(d.last_updated).getTime() : 0;
-          const online = Date.now() - last < 5 * 60 * 1000;
-
-          const metrics = Object.entries(d.metrics || {}).map(([k, v]) => {
-            const ts = v?.timestamp ? new Date(v.timestamp).toLocaleString() : '';
-            const val = v?.value ?? '';
-            return `<li><strong>${cap(k)}:</strong> ${val}${unit(k)} <small>${ts}</small></li>`;
-          }).join('');
-
-          return `
-            <section style="margin: 12px 0; padding: 8px 0; border-top: 1px solid #ddd;">
-              <header style="display:flex; gap:8px; align-items:center;">
-                <strong>${d.device_id}</strong>
-                <span>${online ? 'Online' : 'Offline'}</span>
-              </header>
-              <ul style="margin:6px 0 0 16px;">${metrics}</ul>
-            </section>
-          `;
-        }).join('');
-      };
-
-      async function fetchJSON(url, init) {
-        const res = await fetch(url, init);
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || res.statusText);
-        return data;
+      function filterDevices() {
+        const q = searchInput.value.trim().toLowerCase();
+        let visible = 0;
+        deviceItems.forEach(li => {
+          const id = li.dataset.deviceId;
+          if (!q || id.includes(q)) {
+            li.style.display = '';
+            visible++;
+          } else {
+            li.style.display = 'none';
+          }
+        });
+        countEl.textContent = visible + '/' + deviceItems.length;
+        localStorage.setItem('deviceSearch', searchInput.value);
       }
 
-      async function refresh() {
-        devicesEl.textContent = 'Loading devices...';
-        try {
-          const { devices = [] } = await fetchJSON('/api/devices');
-          renderDevices(devices);
-        } catch (e) {
-          devicesEl.innerHTML = `<div class="error">Error loading devices: ${e.message}</div>`;
-        }
+      searchInput.addEventListener('input', filterDevices);
+      filterDevices();
+
+      function reloadPreserveSearch() {
+        localStorage.setItem('deviceSearch', searchInput.value);
+        location.reload();
       }
 
-      async function clearAll() {
-        if (!confirm('Are you sure you want to delete all device data? This action cannot be undone.')) return;
-        try {
-          const { message } = await fetchJSON('/api/delete-all', { method: 'POST' });
-          showMessage(message || 'All data cleared');
-          renderDevices([]);
-        } catch (e) {
-          showMessage(`Error clearing data: ${e.message}`);
+      document.getElementById('refreshBtn').onclick = function() {
+        localStorage.setItem('deviceSearch', searchInput.value);
+        fetch('/api/devices')
+          .then(r => r.json())
+          .finally(reloadPreserveSearch);
+      };
+
+      document.getElementById('clearBtn').onclick = function() {
+        if (confirm('Delete all device data?')) {
+          fetch('/api/delete-all', { method: 'POST' })
+            .then(r => {
+              if (r.ok) {
+                reloadPreserveSearch();
+              } else {
+                alert('Failed to clear data.');
+              }
+            });
         }
-      }
+      };
 
-      document.getElementById('refreshBtn').addEventListener('click', refresh);
-      document.getElementById('clearBtn').addEventListener('click', clearAll);
-
-      setInterval(refresh, 30000);
-      refresh();
-    })();
-  </script>
-</body>
+      setInterval(reloadPreserveSearch, 30000);
+    </script>
+  </body>
 </html>

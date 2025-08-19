@@ -2,11 +2,9 @@
 
 # Post N random readings (default 100) to the API
 BASE_URL="http://localhost"
-COUNT=${1:-100}
-COUNT_BULK=${2:-100}
-ITEMS_PER_BULK=${3:-5}
+COUNT=${1:-200}
 
-DEVICE_ID="device_01"
+
 METRICS=("temperature" "humidity" "pressure" "voltage" "current" "power")
 
 gen_value() {
@@ -23,6 +21,8 @@ gen_value() {
 echo "Sending $COUNT readings for $DEVICE_ID..."
 success=0
 for ((i=1;i<=COUNT;i++)); do
+    ID_NUM=$((RANDOM % 15 + 1))
+    DEVICE_ID="device_${ID_NUM}"
     echo -n "[$i/$COUNT] "
     metric=${METRICS[$((RANDOM % ${#METRICS[@]}))]}
     value=$(gen_value "$metric")
