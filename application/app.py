@@ -179,6 +179,15 @@ def render_dashboard_page():
     devices = get_all_devices_data()
     return render_template('dashboard.html', devices=devices)
 
+@app.route('/device/<device_id>', methods=['GET'])
+def render_device_page(device_id):
+    try:
+        device_data = db.get_device_history(device_id)
+        return render_template('device.html', device_id=device_id, device=device_data)
+    except Exception as e:
+        print(f"Error: {e}")  # Debugging
+        return jsonify({'error': str(e)}), 500
+
 # Simple health check endpoint
 @app.route('/health', methods=['GET'])
 def health_check():

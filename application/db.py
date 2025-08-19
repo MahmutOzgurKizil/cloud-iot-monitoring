@@ -64,7 +64,7 @@ def get_latest_device_data(device_id):
         )
         return cur.fetchall()
 
-def get_device_history(device_id, metric_type=None, limit=100):
+def get_device_history(device_id, metric_type=None, limit=200):
     with get_db_connection() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
         if metric_type:
             cur.execute(

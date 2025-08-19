@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" style="background: #f5f7fa;">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>{{ device.device_id }}</title>
+        <script src="{{ url_for('static', filename='chart.umd.min.js') }}"></script>
+        <link rel="stylesheet" href="{{ url_for('static', filename='device.css') }}">
+
+    </head>
+    <body style="padding: 24px;">
+        <h1>{{ device_id }}</h1>
+
+        <div class="custom-select" style="width:200px;">
+            <select>
+                <option value="temperature">Temperature</option>
+                <option value="humidity">Humidity</option>
+                <option value="pressure">Pressure</option>
+                <option value="voltage">Voltage</option>
+                <option value="current">Current</option>
+                <option value="power">Power</option>
+            </select>
+        </div>
+    
+        <div style="padding: 24px;">
+            <canvas id="myChart"></canvas>
+        </div>
+    </body>
+
+
+    <script>
+        const metric = localStorage.getItem('metric') || 'temperature';
+        const deviceData = {{ device | tojson }};
+        console.log('Device Data:', deviceData);
+
+        // Set the dropdown to the stored metric value
+        const selectElement = document.querySelector('.custom-select select');
+        selectElement.value = metric;
+
+        const ctx = document.getElementById('myChart');
+
+        const filteredData = deviceData.filter(entry => entry.metric_type === metric && entry.value !== "");
+        const timestamps = filteredData.map(entry => entry.timestamp).reverse();
+        const temperatureValues = filteredData.map(entry => parseFloat(entry.value)).reverse();
+
+        const data = {
+            labels: timestamps,
+            datasets: [
+                {
+                    label: metric.charAt(0).toUpperCase() + metric.slice(1),
+                    data: temperatureValues,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    fill: false
+                }
+            ]
+        };
+
+        const config = {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: metric.charAt(0).toUpperCase() + metric.slice(1) + ' Over Time'
+                    }
+                }
+            },
+        };
+        const myChart = new Chart(ctx, config);
+
+        selectElement.addEventListener('change', function() {
+            const selectedMetric = this.value;
+            const filteredData = deviceData.filter(entry => entry.metric_type === selectedMetric && entry.value !== "");
+            const newTimestamps = filteredData.map(entry => entry.timestamp).reverse();
+            const newValues = filteredData.map(entry => parseFloat(entry.value)).reverse();
+
+            myChart.data.labels = newTimestamps;
+            myChart.data.datasets[0].data = newValues;
+            myChart.data.datasets[0].label = selectedMetric.charAt(0).toUpperCase() + selectedMetric.slice(1);
+            myChart.update();
+            localStorage.setItem('metric', selectedMetric);
+        });
+    </script>
+
+</html>
