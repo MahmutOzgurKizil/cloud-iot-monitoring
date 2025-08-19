@@ -27,7 +27,6 @@ h1{
   letter-spacing:-.3px;
 }
 
-/* Simple select to match inputs on the other page */
 .custom-select{
   width:min(220px,100%);
   margin:8px 0 16px;
@@ -49,7 +48,6 @@ h1{
   box-shadow:0 0 0 3px rgba(45,91,227,.25), var(--shadow);
 }
 
-/* Card around the chart – targets the div after the select */
 .custom-select + div{
   background:var(--card-bg);
   border:1px solid #f2f4f7;
@@ -59,7 +57,6 @@ h1{
   max-width:1100px;
 }
 
-/* No stretching: width 100%, height auto, fixed aspect ratio */
 #myChart{
   display:block;
   width:100% !important;
@@ -67,7 +64,6 @@ h1{
   aspect-ratio:16 / 9;
 }
 
-/* Mobile niceties */
 @media (max-width:520px){
   h1{ font-size:1.8rem; }
   .custom-select{ width:100%; }
