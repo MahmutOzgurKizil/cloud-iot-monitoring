@@ -9,9 +9,9 @@
 
     </head>
     <body style="padding: 24px;">
-        <h1>{{ device_id }}</h1>
-
-        <div class="custom-select" style="width:200px;">
+        <div>
+            <h1>{{ device_id }}</h1>
+            <div class="custom-select" style="width:200px;">
             <select>
                 <option value="temperature">Temperature</option>
                 <option value="humidity">Humidity</option>
@@ -21,6 +21,10 @@
                 <option value="power">Power</option>
             </select>
         </div>
+        </div>
+        
+
+        
     
         <div style="padding: 24px;">
             <canvas id="myChart"></canvas>
@@ -61,13 +65,18 @@
             data: data,
             options: {
                 responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero:true,
+                    }
+                },
                 plugins: {
                     legend: {
                         position: 'top',
                     },
                     title: {
                         display: true,
-                        text: `Device Metrics for {{ device_id }}`
+                        text: metric.charAt(0).toUpperCase() + metric.slice(1) + ` Metric for {{ device_id }}`
                     }
                 }
             },
