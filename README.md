@@ -1,116 +1,97 @@
-# Huawei Internship — Learning Project
+## IoT Device Monitoring Service (Huawei Internship Project)
 
-This project was built during my Huawei internship. It is a simple IoT device monitoring service.
 
-## What this project does
-- Receives device data over HTTP (JSON)
-- Sends data to Kafka
-- A worker saves data to PostgreSQL and refreshes Redis cache
-- Shows a small web dashboard at `/`
+Practical reference implementation for ingesting IoT device metrics via REST API, buffering with Kafka, persisting to PostgreSQL, caching latest values in Redis, and exposing both a small HTML dashboard and JSON APIs. Built during a Huawei internship.
 
-## Tech stack
-- Flask (API and dashboard)
-- Kafka (message queue)
-- PostgreSQL (database)
-- Redis (cache)
-- Docker Compose (local setup)
 
-## Run locally
-Prerequisites: Docker Desktop and Docker Compose.
+### Components
+- Flask app: API + dashboard
+- Kafka: queue for readings
+- Worker: consumes, validates, inserts, updates cache
+- PostgreSQL: durable storage
+- Redis: cache, latest value per (device, metric)
 
-1) Optional: create a `.env` file (see below). Defaults work for local use.
-2) Start everything:
-```bash
+### Run Locally
+Prereq: Docker + Docker Compose.
+```
 docker compose up -d --build
 ```
-3) Open http://localhost (dashboard)
-4) Health: http://localhost/health
+Open http://localhost (dashboard) and http://localhost/health.
 
-To stop: `docker compose down` (add `-v` to also remove the Postgres volume).
+Stop (keep data): `docker compose down`
+Stop + wipe db: `docker compose down -v`
 
-### Environment (.env)
+### Configuration (.env) Defaults
 ```
-# Database
 DB_HOST=postgres
+DB_PORT=5432
 DB_NAME=iot_devices_db
 DB_USER=admin
 DB_PASSWORD=admin1234
-DB_PORT=5432
-
-# Cache
 REDIS_HOST=redis
 REDIS_PORT=6379
-
-# Kafka
 KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-
-# App
 FLASK_ENV=development
 FLASK_DEBUG=True
 ```
 
-## API
-- POST `/api/device/data` — send one reading
-   - `{ device_id, metric_type, value, timestamp? }`
-- POST `/api/device/data/bulk` — send many readings
-   - `{ readings: [ { device_id, metric_type, value, timestamp? }, ... ] }` (max 100)
-- GET `/api/devices` — latest values per device/metric
-- GET `/api/device/<device_id>/latest` — latest per metric for a device
-- GET `/api/device/<device_id>/history?metric_type=&limit=` — history (limit ≤ 1000)
-- POST `/api/delete-all` — clear DB and cache (demo only)
-- GET `/health` — liveness check
+### Data Model (Simplified)
+```
+reading(device_id TEXT,
+            metric_type ENUM(...),
+            value DOUBLE PRECISION,
+            timestamp TIMESTAMPTZ)
+```
+Metric types: temperature, humidity, pressure, voltage, current, power.
 
-Allowed metrics: `temperature`, `humidity`, `pressure`, `voltage`, `current`, `power`.
+### API
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /api/device/data | Single reading |
+| POST | /api/device/data/bulk | Up to 100 readings |
+| GET | /api/devices | Latest per device/metric |
+| GET | /api/device/<device_id>/latest | Latest per metric for one device |
+| GET | /api/device/<device_id>/history?metric_type=&limit= | Historical list (limit ≤ 1000) |
+| POST | /api/delete-all | Clear DB + cache (demo only) |
+| GET | /health | Liveness |
 
-## Sample data
-Send one reading:
-```bash
+Examples:
+```
 curl -s -X POST http://localhost/api/device/data \
    -H 'Content-Type: application/json' \
    -d '{"device_id":"device_01","metric_type":"temperature","value":22.5}'
+
+curl -s -X POST http://localhost/api/device/data/bulk \
+   -H 'Content-Type: application/json' \
+   -d '{"readings":[{"device_id":"d1","metric_type":"humidity","value":55.2},{"device_id":"d1","metric_type":"temperature","value":21.1}]}'
 ```
 
-Generate random readings:
-```bash
-bash test/test_random_data.sh 50 10 5
+### Generating Sample Data
+Script arguments: device_count metrics_per_device iterations
+```
+bash test/test_random_data.sh
 ```
 
-## Deploy on Huawei Cloud
-Option A — Single ECS with Docker Compose
-1) Create an ECS VM and assign an Elastic IP
-2) Install Docker and Docker Compose
-3) Copy the repo and optional `.env`
-4) Run `docker compose up -d`
-5) Open ports 80/443; visit `http://<EIP>/health`
+### Deployment (Huawei Cloud)
+First, create a VPC, subnets, security group for a simple web app (ports 80/443). All the components ca run in the same VPC.
 
-Option B — Managed services
-- Use RDS (PostgreSQL), DCS (Redis), DMS (Kafka). Run API/worker on ECS or CCE.
-- Update `.env`:
-   ```
-   DB_HOST=<rds-endpoint>
-   DB_PORT=5432
-   DB_NAME=iot_devices_db
-   DB_USER=<rds-user>
-   DB_PASSWORD=<rds-password>
+**Option A (single ECS):** run the same compose stack. Open ports 80/443. Attach Elastic IP.
 
-   REDIS_HOST=<dcs-endpoint>
-   REDIS_PORT=6379
+**Option B (managed services):** use RDS (Postgres), DCS (Redis), DMS (Kafka). Run API + worker on ECS or CCE.
+Minimal production overrides:
+```
+DB_HOST=<rds-endpoint>
+DB_USER=<user>
+DB_PASSWORD=<password>
+REDIS_HOST=<dcs-endpoint>
+KAFKA_BOOTSTRAP_SERVERS=<dms-bootstrap>
+FLASK_ENV=production
+FLASK_DEBUG=False
+```
+Put API behind ELB; add Auto Scaling if required.
 
-   KAFKA_BOOTSTRAP_SERVERS=<dms-bootstrap-servers>
 
-   FLASK_ENV=production
-   FLASK_DEBUG=False
-   ```
-- Put the API behind ELB. Add Auto Scaling if needed.
-
-## Troubleshooting
-- Worker can retry until Kafka is ready
-- To reset: POST `/api/delete-all` or remove the DB volume
-- If the dashboard is empty, post some data and refresh
-
-## Short roadmap
-- Local MVP with compose
-- Background worker and bulk ingest
-- Single ECS deploy with Docker
-- Move DB/Cache/Queue to RDS/DCS/DMS + ELB
-- Scale out with Auto Scaling and health checks
+Reset (demo only):
+```
+curl -X POST http://localhost/api/delete-all
+```
