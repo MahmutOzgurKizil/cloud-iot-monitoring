@@ -75,25 +75,6 @@ def handle_submit_device_data():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/device/<device_id>/latest', methods=['GET'])
-def handle_get_latest_device_data(device_id):
-    try:
-        cache_key = f"device_latest_{device_id}"
-        cache = rc.get(cache_key)
-        if cache:
-            latest_data = json.loads(cache)
-        else:
-            latest_data = db.get_latest_device_data(device_id)
-            if latest_data:
-                rc.set(cache_key, json.dumps(latest_data, default=str), ex=60)  # 1 minute cache
-        
-        if not latest_data:
-            return jsonify({'error': 'Device not found'}), 404
-            
-        return jsonify({'device_id': device_id, 'data': latest_data}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/device/<device_id>/history', methods=['GET'])
 def handle_get_device_history(device_id):
     try:
@@ -181,7 +162,7 @@ def handle_bulk_device_data():
         return jsonify({'error': str(e)}), 500
     
 
-# Since this is a demo and not a production app, we will provide a simple endpoint to delete all data to reset the state
+# Since this is a demo and not a production app, I will provide a simple endpoint to delete all data to reset the state
 @app.route('/api/delete-all', methods=['POST'])
 def handle_delete_all():
     try:

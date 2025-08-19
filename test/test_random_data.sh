@@ -6,7 +6,7 @@ COUNT=${1:-100}
 COUNT_BULK=${2:-100}
 ITEMS_PER_BULK=${3:-5}
 
-DEVICES=("device_01" "device_02" "device_03" "sensors" "temp_monitor")
+DEVICE_ID="device_01"
 METRICS=("temperature" "humidity" "pressure" "voltage" "current" "power")
 
 gen_value() {
@@ -20,13 +20,13 @@ gen_value() {
     esac
 }
 
-echo "Sending $COUNT random readings..."
+echo "Sending $COUNT readings for $DEVICE_ID..."
 success=0
 for ((i=1;i<=COUNT;i++)); do
-    device=${DEVICES[$((RANDOM % ${#DEVICES[@]}))]}
+    echo -n "[$i/$COUNT] "
     metric=${METRICS[$((RANDOM % ${#METRICS[@]}))]}
     value=$(gen_value "$metric")
-    payload=$(printf '{"device_id":"%s","metric_type":"%s","value":%s}' "$device" "$metric" "$value")
+    payload=$(printf '{"device_id":"%s","metric_type":"%s","value":%s}' "$DEVICE_ID" "$metric" "$value")
     resp=$(curl -s -X POST "$BASE_URL/api/device/data" -H 'Content-Type: application/json' -d "$payload")
     if echo "$resp" | grep -q "successfully"; then
         ((success++))
@@ -34,27 +34,3 @@ for ((i=1;i<=COUNT;i++)); do
         echo "[$i] failed: $resp"
     fi
 done
-
-echo "Done. Success: $success/$COUNT"
-
-# Bulk submissions
-echo "Sending $COUNT_BULK bulk submissions (each with $ITEMS_PER_BULK items)..."
-bulk_success=0
-for ((b=1;b<=COUNT_BULK;b++)); do
-    items=""
-    for ((k=1;k<=ITEMS_PER_BULK;k++)); do
-        device=${DEVICES[$((RANDOM % ${#DEVICES[@]}))]}
-        metric=${METRICS[$((RANDOM % ${#METRICS[@]}))]}
-        value=$(gen_value "$metric")
-        item=$(printf '{"device_id":"%s","metric_type":"%s","value":%s}' "$device" "$metric" "$value")
-        items+="${items:+,}$item"
-    done
-    bulk_json='{"readings":['"$items"']}'
-    resp=$(curl -s -X POST "$BASE_URL/api/device/data/bulk" -H 'Content-Type: application/json' -d "$bulk_json")
-    if echo "$resp" | grep -q "successfully"; then
-        ((bulk_success++))
-    else
-        echo "[bulk $b] failed: $resp"
-    fi
-done
-echo "Bulk done. Success: $bulk_success/$COUNT_BULK"

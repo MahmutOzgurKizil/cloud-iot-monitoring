@@ -61,7 +61,6 @@ def consume_device_data_updates():
             
             # Clear relevant caches
             device_id = data['device_id']
-            rc.delete(f"device_latest_{device_id}")
             rc.delete("all_devices")
             
         except Exception as e:
